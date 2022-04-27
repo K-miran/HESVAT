@@ -4,8 +4,8 @@
 
 * [Download](#download)
 * [Installation](#installation)
-    *[Dependencies](#Dependencies)
-    *[To Installl HE-SVAT](#To-Install-HE-SVAT)
+    * [Dependencies](#Dependencies)
+    * [To Installl HE-SVAT](#To-Install-HE-SVAT)
 * [Description of HE-SVAT](#Description-of-HE-SVAT)
     * [Task 1: Secure Annotation](#Task-1-Secure-Annotation)
     * [Task 2: Secure Aggregation](#Task-2-Secure-Aggregation)    
