@@ -550,49 +550,39 @@ void run_secure_variant_reencrypt_aggregation(int n_posns, int encoding, int n_a
     SEALContext context(parms);
 
     auto qualifiers = context.first_context_data()->qualifiers();
-
-    KeyGenerator keygen(context);
     
-    /* Generate a key pair (sk0, pk0) */
-    SecretKey secret_key_0 = keygen.secret_key();
-    PublicKey public_key_0;
-    keygen.create_public_key(public_key_0);
-    Encryptor encryptor_0(context, public_key_0);
-    Decryptor decryptor_0(context, secret_key_0);
-
-    /* Generate a key pair (sk1, pk1) */
-    SecretKey secret_key_1 = keygen.secret_key();
-    PublicKey public_key_1;
-    keygen.create_public_key(public_key_1);
-    Encryptor encryptor_1(context, public_key_1);
-    Decryptor decryptor_1(context, secret_key_1);
-
     /* Generate a key pair (sk, pk) */
-    SecretKey secret_key = keygen.secret_key();
+    KeyGenerator keygen(context);
+    auto secret_key = keygen.secret_key();
     PublicKey public_key;
     keygen.create_public_key(public_key);
     Encryptor encryptor(context, public_key);
     Decryptor decryptor(context, secret_key);
     Evaluator evaluator(context);
     
-    /* Relinearlization key */
-    RelinKeys relin_keys_0;
-    RelinKeys relin_keys_1;
-   
-    auto &context_data = *context.key_context_data();
-    size_t coeff_count = parms.poly_modulus_degree();
-    size_t coeff_modulus_size = parms.coeff_modulus().size();
-    
-    seal::util::PolyIter NTT_secret_key_0(secret_key_0.data().data(), coeff_count, coeff_modulus_size);
-    keygen.create_kswitch_keys(NTT_secret_key_0, relin_keys_0);   // sk0 -> sk
+    /* Generate a key pair (sk0, pk0) */
+    KeyGenerator keygen_0(context);
+    auto secret_key_0 = keygen_0.secret_key();
+    PublicKey public_key_0;
+    keygen_0.create_public_key(public_key_0);
+    Encryptor encryptor_0(context, public_key_0);
+    //Decryptor decryptor_0(context, secret_key_0);
 
-    seal::util::PolyIter NTT_secret_key_1(secret_key_1.data().data(), coeff_count, coeff_modulus_size);
-    keygen.create_kswitch_keys(NTT_secret_key_1, relin_keys_1);   // sk1 -> sk
-    
-    //sk0: SecretKey -> PolyIter
-    //seal::util::RNSIter RNS_secret_key(secret_key_0.data().data(), coeff_count);
-    //keygen.create_relin_keys(relin_keys);
-   
+    /* Generate a key pair (sk1, pk1) */
+    KeyGenerator keygen_1(context);
+    auto secret_key_1 = keygen_1.secret_key();
+    PublicKey public_key_1;
+    keygen_1.create_public_key(public_key_1);
+    Encryptor encryptor_1(context, public_key_1);
+    //Decryptor decryptor_1(context, secret_key_1);
+
+    /* Key-switchinkg keys */
+    RelinKeys relin_keys_0;
+    keygen.create_kswitch_key(secret_key_0, relin_keys_0);
+
+    RelinKeys relin_keys_1;
+    keygen.create_kswitch_key(secret_key_1, relin_keys_1);
+
     /* Print the size of the true (product) coefficient modulus */
     std::cout << "|   coeff_modulus size: ";
     std::cout << context_data.total_coeff_modulus_bit_count() << endl;
@@ -669,7 +659,7 @@ void run_secure_variant_reencrypt_aggregation(int n_posns, int encoding, int n_a
         for(int k = 0; k < nctxts_trial; ++k){
             MT_EXEC_RANGE(n_individuals_0, first, last);
             for(int i = first; i < last; ++i){
-                evaluator.relinearize_inplace(variant_ct_0[i][allele_i][k], relin_keys_0);
+                evaluator.switch_keys_inplace(variant_ct_0[i][allele_i][k], relin_keys_0);
             }
             MT_EXEC_RANGE_END
         }
@@ -685,7 +675,7 @@ void run_secure_variant_reencrypt_aggregation(int n_posns, int encoding, int n_a
         for(int k = 0; k < nctxts_trial; ++k){
             MT_EXEC_RANGE(n_individuals_1, first, last);
             for(int i = first; i < last; ++i){
-                evaluator.relinearize_inplace(variant_ct_1[i][allele_i][k], relin_keys_1);
+                evaluator.switch_keys_inplace(variant_ct_1[i][allele_i][k], relin_keys_1);
             }
             MT_EXEC_RANGE_END
         }

@@ -69,7 +69,7 @@ namespace seal
         {
             destination = generate_pk(false);
         }
-
+        
         /**
         Generates and returns a public key as a serializable object. Every time
         this function is called, a new public key will be generated.
@@ -98,7 +98,7 @@ namespace seal
         {
             destination = create_relin_keys(1, false);
         }
-
+        
         /**
         Generates and returns relinearization keys as a serializable object.
         Every time this function is called, new relinearization keys will be
@@ -116,20 +116,22 @@ namespace seal
         {
             return create_relin_keys(1, true);
         }
-
+        
         
         // miran: new_key -> sk
-        inline void create_kswitch_keys(util::ConstPolyIter new_key, RelinKeys &destination)
+        inline void create_kswitch_key(SecretKey new_key, RelinKeys &destination)
         {
-            auto &context_data = *context_.key_context_data();
-            RelinKeys relin_keys;
-            generate_kswitch_keys(new_key, 1, static_cast<KSwitchKeys &>(relin_keys), false);
+            destination = create_kswitch_key(new_key, false);
             
-            relin_keys.parms_id() = context_data.parms_id();
-            destination = relin_keys;
+//            auto &context_data = *context_.key_context_data();
+//            RelinKeys relin_keys;
+//            generate_kswitch_keys(new_key, 1, static_cast<KSwitchKeys &>(relin_keys), false);
+//            relin_keys.parms_id() = context_data.parms_id();
+//            destination = relin_keys;
         }
         
-       
+
+
         /**
         Generates Galois keys and stores the result in destination. Every time
         this function is called, new Galois keys will be generated.
@@ -344,6 +346,9 @@ namespace seal
         */
         RelinKeys create_relin_keys(std::size_t count, bool save_seed);
 
+        // miran
+        RelinKeys create_kswitch_key(SecretKey new_key, bool save_seed);
+        
         /**
         Generates and returns Galois keys. This function creates specific Galois
         keys that can be used to apply specific Galois automorphisms on encrypted
@@ -379,5 +384,6 @@ namespace seal
         mutable util::ReaderWriterLocker secret_key_array_locker_;
 
         bool sk_generated_ = false;
+
     };
 } // namespace seal
