@@ -2,8 +2,7 @@
  * @file       thread.h, header file
  * @brief      defining functions for multi-threading
  *
- * @author     Miran Kim
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 

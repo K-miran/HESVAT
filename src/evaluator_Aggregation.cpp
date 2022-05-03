@@ -2,8 +2,7 @@
  * @file       evaluator_Aggregation.cpp, cpp file
  * @brief      functions of encryption and decryption for tasks 2 and 3
  *
- * @author     Miran Kim
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 #include <stdio.h>
@@ -67,12 +66,14 @@ void HEenc::encrypt_data(vector<vector<vector<Ciphertext>>>& ct,  vector<vector<
                 encryptor.encrypt(plaintext, ct[i][allele_i][j]);
             }
             MT_EXEC_RANGE_END
-            
+         
+#ifdef DEBUG
             if((i + 1) % 10 == 0){
                 cout << "(i,allele) = (" << i << "," << allele_i << "): " ;
                 getrusage(RUSAGE_SELF, &usage);
                 cout << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
             }
+#endif
         }
     }
 }
@@ -103,8 +104,9 @@ void HEenc::encrypt_data(vector<vector<vector<Ciphertext>>>& ct, vector<vector<v
     
     for(int allele_i = 0; allele_i < n_allels; allele_i++){ // n_allels
         for(int i = 0; i < n_individuals; ++i){
+#ifdef DEBUG
             cout << "(i,allele) = (" << i << "," << allele_i << "): " ;
-            
+#endif 
             //vector<vector<uint64_t>> input_temp(nctxts, vector<uint64_t>(slot_count, 0ULL));
             MT_EXEC_RANGE(nctxts, first, last);
             for(int j = first; j < last; j++){

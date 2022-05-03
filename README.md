@@ -42,7 +42,7 @@ We recommend to install `HESVAT` into a C++ environment.
 2. Install the modified SEAL library (SEAL 3.6.4) with the following commands: 
     ```
     cd ${HESVAT_ROOT}/src/external/SEAL-main
-    cmake. 
+    cmake . 
     make 
     ```
 3. Install the HESVAT library by running the following commands :
@@ -81,6 +81,10 @@ data
 
 We would like to perform the constant-ciphertext multiplication with the ciphertext of the annotation vector and the corresponding variant loci vector. 
 
+The plain results can be found in the folder `Anotation_Vector_Data` (e.g., res_plain_10000.txt). Alternatively, you can get these results with the following command: 
+```
+./testPlain task1 10000
+```
 
 ### Task 2: Secure Aggregation
 
@@ -115,6 +119,10 @@ data
 
 We encrypt the full genotype matrices by taking the entries in row-major order and encrypting vectors as ciphertexts. Then we compute the frequencies of the mutations by securely aggregating over samples. 
 
+The plain results can be found in the folder `Aggregation_Matrix_Data` (e.g., task2_res_plain_0_500.txt). Alternatively, you can get these results with the following command: 
+```
+./testPlain task2 0 500
+```
 
 ### Task 3: Secure Aggregation by Proxy Encryption
 
@@ -125,22 +133,26 @@ We encrypt the full genotype matrices by taking the entries in row-major order a
 - Do secure aggregation (summation over samples), so we get a vector of length 6,601,984 that can be decryptable by the secret key and each entry is the summation over all individuals.
 - Decrypt the resulting vector.
 
+The plain results can be found in the folder `Aggregation_Matrix_Data` (e.g., task3_res_plain_0.txt). Alternatively, you can get these results with the following command: 
+```
+./testPlain task3 0 
+```
 
 ## Examples
 
 ### Task 1: Example Run 
-The following list of command-line arguments is required after the name of the test program (`foo`):
+The following list of command-line arguments is required after the name of the test program (`test`):
 - Type of Task
 - Number of threads
 - Number of variants (e.g., 10000, 20000, 50000)
 
 For instance, run the test program with different inputs:
 ```
-./foo task1 4 10000
+./test task1 24 10000
 ```
 
 ### Task 2: Example Run 
-The following list of command-line arguments is required after the name of the test program (`foo`):
+The following list of command-line arguments is required after the name of the test program (`test`):
 - Type of Task
 - Number of threads
 - Encoding type (e.g., 0, 1)
@@ -149,11 +161,11 @@ The following list of command-line arguments is required after the name of the t
 
 For instance, run the test program with different inputs:
 ```
-./foo task2 24 0 500 1
+./test task2 24 0 500 1
 ```
 
 ### Task 3: Example Run 
-The following list of command-line arguments is required after the name of the test program (`foo`):
+The following list of command-line arguments is required after the name of the test program (`test`):
 - Type of Task
 - Number of threads
 - Encoding type (e.g., 0, 1)
@@ -161,7 +173,8 @@ The following list of command-line arguments is required after the name of the t
 
 For instance, run the test program with different inputs:
 ```
-./foo task3 24 1 2
+./test task3 24 0 1 
 ```
+
 
 

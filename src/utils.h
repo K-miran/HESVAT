@@ -2,8 +2,7 @@
  * @file       utils.h, header file
  * @brief      function for reading and storing data
  *
- * @author     Miran Kim, Arif Harmanci
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 
@@ -36,7 +35,7 @@ inline void colSums(vector<vector<int>>& res, vector<vector<vector<T>>> geno, in
             }
             if(temp[allele_i] != 0){
                 res[j][allele_i] = temp[allele_i];
-                cout << "(allele,j)=(" <<  allele_i << "," << j << "): " << temp[allele_i] << endl;
+                //cout << "(allele,j)=(" <<  allele_i << "," << j << "): " << temp[allele_i] << endl;
             }
         }
     }
@@ -55,13 +54,18 @@ inline void colSums(vector<vector<int>>& res, vector<vector<vector<vector<bool>>
             }
             if(temp[allele_i] != 0){
                 res[j][allele_i] = temp[allele_i];
-                cout << "(allele,j)=(" <<  allele_i << "," << j << "): " << temp[allele_i] << endl;
+                //cout << "(allele,j)=(" <<  allele_i << "," << j << "): " << temp[allele_i] << endl;
             }
         }
     }
 }
 
+void write_data(uint64_t *data, size_t length, string filename);
+void write_data(vector<uint64_t> res, string filename);
 void write_data(vector<vector<int>> data, string filename);
+
+
+void read_data(vector<uint64_t>& res, string filename);
 void read_data(vector<vector<int>>& res, string filename);
 void read_data(vector<vector<int>>& res, string filename, int ncols);
 

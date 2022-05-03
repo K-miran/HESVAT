@@ -2,8 +2,7 @@
  * @file       utils.cpp, cpp file
  * @brief      function for reading and storing data
  *
- * @author     Miran Kim, Arif Harmanci
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 
@@ -215,7 +214,7 @@ void write_data(vector<vector<int>> data, string filename)
     
     size_t nrows = data.size();
     size_t ncols = data[0].size();
-    cout << nrows << "," << ncols << endl;
+    //cout << nrows << "," << ncols << endl;
     
     for(size_t i = 0; i < nrows; ++i){
         for(size_t j = 0; j < ncols; ++j){
@@ -226,30 +225,48 @@ void write_data(vector<vector<int>> data, string filename)
     outf.close();
 }
 
+void write_data(uint64_t *data, size_t length, string filename)
+{
+    ofstream outf_tmp(filename);
+    outf_tmp.close();
+    
+    fstream outf;
+    outf.open(filename.c_str(), fstream::in | fstream::out | fstream::app);   // open the file
+    
+    for(size_t i = 0; i < length; ++i){
+        outf << data[i] << endl;
+    }
+    outf.close();
+}
 
-//
-///*
-//@param[in] filename, the path for an one-column file
-//@param[out] res, the double-type vector
-// return the size of the output vector
-//*/
-//void read_onecol(vector<int>& res, string filename)
-//{
-//    string line;
-//
-//    ifstream myfile (filename);
-//    if (myfile.is_open())
-//    {
-//      while (getline (myfile,line))
-//      {
-//          res.push_back(stod(line));
-//      }
-//      myfile.close();
-//    }
-//    else{
-//        throw invalid_argument("Unable to open file");
-//    }
-//}
+void write_data(vector<uint64_t> data, string filename)
+{
+    ofstream outf_tmp(filename);
+    outf_tmp.close();
+    
+    fstream outf;
+    outf.open(filename.c_str(), fstream::in | fstream::out | fstream::app);   // open the file
+    
+    for(size_t i = 0; i < data.size(); ++i){
+        outf << data[i] << endl;
+    }
+    outf.close();
+}
+
+
+void read_data(vector<uint64_t>& res, string filename)
+{
+    ifstream openFile(filename.data());
+    
+    string line;
+    char split_char = 0x0A; // new line
+    if(openFile.is_open()){
+        while(getline(openFile, line, split_char)){
+            uint64_t num = stol(line);
+            res.push_back(num);
+        }
+    }
+}
 
 
 /*
@@ -327,6 +344,5 @@ void read_data(vector<vector<int>>& res, string filename, int ncols)
         res.push_back(temp);
     }
 }
-
 
 

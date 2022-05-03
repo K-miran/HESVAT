@@ -90,16 +90,13 @@ namespace seal
         sk_generated_ = true;
     }
 
-    
-
-
     PublicKey KeyGenerator::generate_pk(bool save_seed) const
     {
         if (!sk_generated_)
         {
             throw logic_error("cannot generate public key for unspecified secret key");
         }
-        
+
         // Extract encryption parameters.
         auto &context_data = *context_.key_context_data();
         auto &parms = context_data.parms();
@@ -121,7 +118,6 @@ namespace seal
 
         return public_key;
     }
-
 
     RelinKeys KeyGenerator::create_relin_keys(size_t count, bool save_seed)
     {
@@ -164,7 +160,7 @@ namespace seal
     }
 
     // miran
-    RelinKeys KeyGenerator::create_kswitch_key(SecretKey new_key, bool save_seed) // util::ConstPolyIter new_key
+    RelinKeys KeyGenerator::create_kswitch_key(SecretKey old_key, bool save_seed) 
     {
         // Extract encryption parameters.
         size_t count = 1;
@@ -173,21 +169,18 @@ namespace seal
         size_t coeff_count = parms.poly_modulus_degree();
         size_t coeff_modulus_size = parms.coeff_modulus().size();
 
-        
         // Create the RelinKeys object to return
-        RelinKeys relin_keys;
+        RelinKeys switch_key;
 
         // Assume the secret key is already transformed into NTT form.
-        //generate_one_kswitch_key(new_key, relin_keys.data()[0], save_seed);
-        seal::util::PolyIter NTT_key(new_key.data().data(), coeff_count, coeff_modulus_size);
-        generate_kswitch_keys(NTT_key, count, static_cast<KSwitchKeys &>(relin_keys), save_seed);
+        seal::util::PolyIter NTT_key(old_key.data().data(), coeff_count, coeff_modulus_size);
+        generate_kswitch_keys(NTT_key, count, static_cast<KSwitchKeys &>(switch_key), save_seed);
 
         // Set the parms_id
-        relin_keys.parms_id() = context_data.parms_id();
+        switch_key.parms_id() = context_data.parms_id();
 
-        return relin_keys;
+        return switch_key;
     }
-
 
     GaloisKeys KeyGenerator::create_galois_keys(const vector<uint32_t> &galois_elts, bool save_seed)
     {

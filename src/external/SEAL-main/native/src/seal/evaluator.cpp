@@ -2017,6 +2017,7 @@ namespace seal
         }
     }
 
+
     void Evaluator::switch_key_inplace(
         Ciphertext &encrypted, ConstRNSIter target_iter, const KSwitchKeys &kswitch_keys, size_t kswitch_keys_index,
         MemoryPoolHandle pool)
@@ -2262,4 +2263,40 @@ namespace seal
             });
         });
     }
+
+    // miran: 
+    void Evaluator::switch_keys_inplace(
+        Ciphertext &encrypted, const RelinKeys &switch_key, MemoryPoolHandle pool)
+    {
+        // Verify parameters.
+        if (!is_metadata_valid_for(encrypted, context_) || !is_buffer_valid(encrypted))
+        {
+            throw invalid_argument("encrypted is not valid for encryption parameters");
+        }
+        
+        auto &context_data = *context_.key_context_data();
+        auto &parms = context_data.parms();
+        size_t coeff_count = parms.poly_modulus_degree();           // = n
+        size_t coeff_modulus_size = parms.coeff_modulus().size();   // = L + 1
+        std::size_t key_index = 0;
+
+        // Size check
+        if (!product_fits_in(coeff_count, coeff_modulus_size))
+        {
+            throw logic_error("invalid parameters");
+        }
+        
+        // Copy encrypted.data(1) to temp
+        SEAL_ALLOCATE_GET_RNS_ITER(temp, coeff_count, coeff_modulus_size, pool);
+        set_poly(encrypted.data(1), coeff_count, coeff_modulus_size, temp);
+
+        // Wipe encrypted.data(1) (with size n * L)
+        util::set_zero_poly(coeff_count, coeff_modulus_size - 1, encrypted.data(1));
+        
+        // Calculate (temp * switch_key[0], temp * switch_key[1]) + (ct[0], ct[1]=0)
+        switch_key_inplace(
+            encrypted, temp, static_cast<const KSwitchKeys &>(switch_key), key_index, pool);
+
+    }
+
 } // namespace seal

@@ -2,8 +2,7 @@
  * @file       main.cpp, cpp file
  * @brief      test program
  *
- * @date       Apr. 20, 2021
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 #include <iostream>
@@ -25,10 +24,9 @@
 
 using namespace std;
 
-// e.g., ./test task1 24 10000 (or 20000 or 50000)
+// e.g., ./test task1 24 10000 (./test task1 24 20000 or 50000)
 // e.g., ./test task2 24 0 500 1
-// e.g., ./test task3 24 0 5
-
+// e.g., ./test task3 24 0 1
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +51,7 @@ int main(int argc, char *argv[])
         cout << "|                 (" << nvariant  << ")                |" << endl;
         cout << "+----------------------------------------+" << endl;
         
-        run_secure_variant_annotation(variant_fp, impact_fp, n_posns);
+        run_secure_variant_annotation(variant_fp, impact_fp, n_posns, nvariant);
     }
     else if(task == "task2"){
         int n_posns = 6601984;                   // number of positions

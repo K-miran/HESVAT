@@ -2,8 +2,7 @@
  * @file       evaluator_Aggregation.h, header file
  * @brief      functions of encryption and decryption for tasks 2 and 3
  *
- * @author     Miran Kim
- * @copyright  GNU Pub License
+ * @copyright  MIT License
  */
 
 
