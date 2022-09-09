@@ -10,7 +10,8 @@ add_compile_options(-std=c++17)
 add_compile_options(-march=native)
 add_compile_options(-g)
 
-add_executable(test "src/main.cpp" "src/utils.cpp" "src/thread.cpp" "src/testPVAT.cpp" "src/evaluator_Aggregation.cpp"  "src/testSVAT.cpp")
+add_executable(test "src/main.cpp" "src/utils.cpp" "src/thread.cpp" "src/HEutils.cpp" "src/testPVAT.cpp" "src/testSVAT.cpp")
+
 
 add_executable(testPlain "src/mainPlain.cpp" "src/utils.cpp" "src/testPVAT.cpp")
 
@@ -18,6 +19,7 @@ add_executable(testPlain "src/mainPlain.cpp" "src/utils.cpp" "src/testPVAT.cpp")
 find_package(SEAL 3.6.4 EXACT REQUIRED
     PATHS src/external/SEAL-main/cmake 
 )
+
 # Import OpenMP 
 find_package(OpenMP)
 #add_definitions("-fopenmp")

@@ -2,6 +2,7 @@
  * @file       testVAT.h, header file
  * @brief      function for running targeted variant annotation and genotype aggregation
  *
+ * @author     Miran Kim
  * @copyright  MIT License
  */
 
@@ -11,6 +12,8 @@
 // Task-1
 void run_variant_annotation(const char *variant_fp, const char *impact_fp, int n_posns, long nvariant);
  
+void run_variant_annotation_large(const char *variant_fp, const char *impact_fp, int n_posns, std::string filename);
+
 // Task-2
 void run_variant_aggregation(int n_posns, int encoding, int n_individuals, const int n_alleles_trials = 5);
  

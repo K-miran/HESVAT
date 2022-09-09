@@ -2,6 +2,7 @@
  * @file       testPVAT.cpp, cpp file
  * @brief      function for running targeted variant annotation and genotype aggregation
  *
+ * @author     Miran Kim
  * @copyright  MIT License
  */
 
@@ -56,6 +57,36 @@ void run_variant_annotation(const char *variant_fp, const char *impact_fp, int n
     string filename = "data/Annotation_Vector_Data/res_plain_" + to_string(nvariant) + ".txt";
     write_data(res, filename);
 }
+
+
+void run_variant_annotation_large(const char *variant_fp, const char *impact_fp, int n_posns, string filename)
+{
+    long memoryscale = (1 << 20); // 2^20: linux, 2^30: mac
+    struct rusage usage;
+    
+    /* Load data (annotation vector, variant loci vector ) */
+    int *variant_vector = new int[n_posns];
+    FILE *ptr;
+    ptr = fopen(variant_fp, "rb");
+    fread(variant_vector, sizeof(int), n_posns, ptr);
+    
+    uint64_t *impact_vector = new uint64_t[n_posns];
+    FILE *ptr1;
+    ptr1 = fopen(impact_fp, "rb");
+    fread(impact_vector, sizeof(uint64_t), n_posns, ptr1);
+    
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Load Data : " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+   
+    vector<uint64_t> res;
+    
+    for(int k = 0; k < n_posns; ++k){    
+        res.push_back(variant_vector[k] * impact_vector[k]);
+    }
+
+    write_data(res, filename);
+}
+
 
 /*
  @Task2: Perform the secure variant aggregation

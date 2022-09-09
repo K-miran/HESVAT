@@ -1,8 +1,8 @@
 /*
- * @file       main.cpp, cpp file
- * @brief      testPlain program
+ * @file       mainPlain.cpp, cpp file
+ * @brief      test program
  *
- * @copyright  MIT License
+ * @copyright  GNU Pub License
  */
 
 #include <iostream>

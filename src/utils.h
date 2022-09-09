@@ -2,7 +2,8 @@
  * @file       utils.h, header file
  * @brief      function for reading and storing data
  *
- * @copyright  MIT License
+ * @author     Miran Kim, Arif Harmanci
+ * @copyright  GNU Pub License
  */
 
 
@@ -67,6 +68,7 @@ void write_data(vector<vector<int>> data, string filename);
 
 void read_data(vector<uint64_t>& res, string filename);
 void read_data(vector<vector<int>>& res, string filename);
+void read_data(vector<vector<string>>& res, string filename);
 void read_data(vector<vector<int>>& res, string filename, int ncols);
 
 #endif // __ALN_UTILS_PLAIN__

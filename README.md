@@ -59,9 +59,9 @@ We recommend to install `HESVAT` into a C++ environment.
 **1. Description of dataset**
 
 There are 3 files that contain variant vectors, which are sensitive and need to be encrypted:
-- `10000_variants_signal_1.bin`: 10000 variants vectorized into the 3,409,574 positions. 
-- `20000_variants_signal_1.bin`: 20000 variants vectorized into the 3,409,574 positions. 
-- `50000_variants_signal_1.bin`: 50000 variants vectorized into the 3,409,574 positions. 
+- `10000_variants_signal_1.bin`: 10000 deletion variants vectorized into the 3,409,574 positions. 
+- `20000_variants_signal_1.bin`: 20000 deletion variants vectorized into the 3,409,574 positions. 
+- `50000_variants_signal_1.bin`: 50000 deletion variants vectorized into the 3,409,574 positions. 
 
 The annotation vectors contain the variant existence for 3,409,574 "vectorized" positions. They store 4 bytes for each variant and they are 0/1 values: "1" means there is a variant at the position, otherwise 0.
 
@@ -83,8 +83,38 @@ We would like to perform the constant-ciphertext multiplication with the ciphert
 
 The plain results can be found in the folder `Anotation_Vector_Data` (e.g., res_plain_10000.txt). Alternatively, you can get these results with the following command: 
 ```
-./testPlain task1 10000
+./testPlain task1 50000
 ```
+
+**3. Additional dataset**
+To show the scalability of the performance, we have a large-scaled dataset (over all chromosomes). We have seperate directories for Deletion (`DEL` ), Insertion (`INS` ), and SNV (`SNV` ) . For each variant type, we have the annotation vector and variant vectors for each chromosome. Your directory tree should look like this:
+```
+data
+└── REVISION_DATA_VECTORS_14_54_01_07_2022
+    └── DEL
+        └── ANNOTATION_SIGNAL
+            ├── 1.bin
+            ├── ...
+            └── Y.bin
+        ├── chr_lenghts.list
+        └── VARIANT_SIGNAL
+    └── INS
+        └── ANNOTATION_SIGNAL
+            ├── 1.bin
+            ├── ...
+            └── Y.bin
+        ├── chr_lenghts.list
+        └── VARIANT_SIGNAL   
+    └── SNV
+        └── ANNOTATION_SIGNAL
+            ├── 1.bin
+            ├── ...
+            └── Y.bin
+        ├── chr_lenghts.list
+        └── VARIANT_SIGNAL
+```
+The chromosome lenghts are stored in the file named `chr_lenghts.list`, where the first column is the chromosome id and the second column is the number of entries in the corresponding chromosome. In particular, we remark that each file in `SNV` has 4 copies of the variant signal corresponding to A,C,G,T. 
+
 
 ### Task 2: Secure Aggregation
 
@@ -142,7 +172,7 @@ The plain results can be found in the folder `Aggregation_Matrix_Data` (e.g., ta
 
 ### Task 1: Example Run 
 The following list of command-line arguments is required after the name of the test program (`test`):
-- Type of Task
+- Type of Task (e.g., task1)
 - Number of threads
 - Number of variants (e.g., 10000, 20000, 50000)
 
@@ -151,9 +181,19 @@ For instance, run the test program with different inputs:
 ./test task1 24 10000
 ```
 
+If you want to test a large-scaled dataset, then the following list of command-line arguments is required after the name of the test program (`test`):
+- Type of Task (e.g., task1large)
+- Number of threads
+- Type of variants (e.g., INS, DEL, SNV)
+
+For instance, run the test program with different inputs:
+```
+./test task1large 24 INS
+```
+
 ### Task 2: Example Run 
 The following list of command-line arguments is required after the name of the test program (`test`):
-- Type of Task
+- Type of Task (e.g., task2)
 - Number of threads
 - Encoding type (e.g., 0, 1)
 - Number of individuals (e.g., 500, 1000)
@@ -166,7 +206,7 @@ For instance, run the test program with different inputs:
 
 ### Task 3: Example Run 
 The following list of command-line arguments is required after the name of the test program (`test`):
-- Type of Task
+- Type of Task (e.g., task3)
 - Number of threads
 - Encoding type (e.g., 0, 1)
 - Number of alleles (e.g., 1, 2, 3, 4, 5)
@@ -175,6 +215,4 @@ For instance, run the test program with different inputs:
 ```
 ./test task3 24 0 1 
 ```
-
-
 

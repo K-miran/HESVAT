@@ -2,7 +2,8 @@
  * @file       testSVAT.cpp, cpp file
  * @brief      function for running secure outsourcing of targeted variant annotation and genotype aggregation
  *
- * @copyright  MIT License
+ * @author     Miran Kim
+ * @copyright  GNU Pub License
  */
 
 #include <stdio.h>
@@ -20,7 +21,7 @@
 #include "seal/seal.h"
 #include "utils.h"
 #include "thread.h"
-#include "evaluator_Aggregation.h"
+#include "HEutils.h"
 #include "testPVAT.h"
 
 #define DEBUG true
@@ -37,7 +38,7 @@ using namespace seal;
  @param[in] impact_fp, filename of a variant loci vector
  @param[in] int n_posns, the number of positions
 */
-void run_secure_variant_annotation(const char *variant_fp, const char *impact_fp, int n_posns, long nvariant)
+void run_secure_variant_annotation(vector<uint64_t> &res, const char *variant_fp, const char *impact_fp, int n_posns, long nvariant)
 {
     size_t poly_modulus_degree = (1 << 11);
     size_t plaintext_modulus_size = 19;
@@ -112,42 +113,20 @@ void run_secure_variant_annotation(const char *variant_fp, const char *impact_fp
     cout << "|     Encryption (annotation vector)     |" << endl;
     cout << "+----------------------------------------+" << endl;
     
-    BatchEncoder batch_encoder(context);
-    
-    size_t slot_count = batch_encoder.slot_count();
-    size_t row_size = slot_count / 2;
-    cout << "Plaintext matrix row size: " << row_size << endl;
-    
-    long nctxts = (ceil)((n_posns/(double)slot_count)); // 1665
-    long last_slot_count = (n_posns - slot_count * (nctxts - 1));
-    int jst, jend;
-    
-    //cout << n_posns << ", Number of slots: " << slot_count << ", nctxts: " << nctxts << ", lastslot: " << last_slot_count << endl;
-    
     time_start = chrono::high_resolution_clock::now();
     
-    vector<Ciphertext> variant_ct(nctxts);
+    BatchEncoder batch_encoder(context);
+    HEutils heutils(encryptor, decryptor, batch_encoder);
     
+    size_t slot_count = batch_encoder.slot_count();
+    long nctxts = (ceil)((n_posns/(double)slot_count));              // the number of generated new ciphertexts (=1665 in this dataset)
+    long last_slot_count = (n_posns - slot_count * (nctxts - 1));   // the number of plaintext slots in the last ciphertext
+    
+    vector<Ciphertext> variant_ct; // [nctxts]
     int n_threads = Thread::availableThreads(); // omp_get_max_threads();
-#pragma omp parallel num_threads(n_threads)
-    {
-#pragma omp for
-        for(int i = 0; i < nctxts; i++){
-            //vector<uint64_t> input_vector(slot_count, 0ULL);
-            vector<uint64_t> input_vector;
-
-            jst = i * slot_count;
-            jend = (i == (nctxts - 1)? jst + last_slot_count: jst + slot_count);
-            
-            input_vector.assign(variant_vector + jst, variant_vector + jend);
-            //input_vector.insert(input_vector.end(), variant_vector + jst, variant_vector + jend);
-
-            Plaintext plaintext;
-            batch_encoder.encode(input_vector, plaintext);
-            encryptor.encrypt(plaintext, variant_ct[i]);
-        }
-    }
-
+    
+    heutils.encrypt_data(variant_ct, variant_vector, nctxts, last_slot_count, n_threads);
+    
     time_end = chrono::high_resolution_clock::now();
     time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
     getrusage(RUSAGE_SELF, &usage);
@@ -158,52 +137,12 @@ void run_secure_variant_annotation(const char *variant_fp, const char *impact_fp
     cout << "+----------------------------------------+" << endl;
 
     time_start = chrono::high_resolution_clock::now();
-    
-    uint64_t unit = (1 << nbitsize) - 1;
-    vector<vector<Plaintext>> impact_pt(nctxts, vector<Plaintext>(nwords));
-   
-    // indicator[i][k] = 1 when there are valid values;
-    vector<vector<bool>> indicator(nctxts, vector<bool>(nwords, true));
-    
-    MT_EXEC_RANGE(nctxts, first, last);
-    for(int i = first; i < last; i++){
-        int unit_slot_cnt = (i == (nctxts - 1)? last_slot_count: slot_count);
-        vector<vector<uint64_t>> buf_vector(nwords, vector<uint64_t> (unit_slot_cnt));
-        
-        jst = i * slot_count;
-        jend = jst + unit_slot_cnt;
-        
-        long l = 0;
-        for(long j = jst; j < jend; ++j){
-            uint64_t val = impact_vector[j];
-            // w-bit representation
-            for(int k = 0; k < nwords; ++k){
-                buf_vector[k][l] = ((val >> (k * nbitsize)) & unit);
-            }
-            l++;
-        }
-        
-        for(int k = 0; k < nwords; ++k){
-            batch_encoder.encode(buf_vector[k], impact_pt[i][k]);
-            
-            // check if the entries of buf_vector are all zero
-            int j = 0;
-            while(1){
-                if(buf_vector[k][j] != 0){
-                    break;
-                }
-                else{ // buf_vector[k][j] = 0
-                    j++;
-                    if(j == unit_slot_cnt){
-                        indicator[i][k] = false;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    MT_EXEC_RANGE_END
 
+    vector<vector<Plaintext>> impact_pt;    // the generated impact plaintext polynomial
+    vector<vector<bool>> indicator;     // indicator vector where the plaintext polynomial is zero or not (if zero, we can skip plaintext-ciphertext multiplication)
+     
+    heutils.encode_variants(impact_pt, indicator, impact_vector, nbitsize, nwords, nctxts, last_slot_count);
+    
     time_end = chrono::high_resolution_clock::now();
     time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
     getrusage(RUSAGE_SELF, &usage);
@@ -215,6 +154,7 @@ void run_secure_variant_annotation(const char *variant_fp, const char *impact_fp
 
     time_start = chrono::high_resolution_clock::now();
     
+    // multiplication with variant_ct and impact_pt
     vector<vector<Ciphertext>> res_ct(nctxts, vector<Ciphertext>(nwords));
     MT_EXEC_RANGE(nctxts, first, last);
     for(int i = first; i < last; i++){
@@ -238,65 +178,216 @@ void run_secure_variant_annotation(const char *variant_fp, const char *impact_fp
     
     time_start = chrono::high_resolution_clock::now();
     
-    vector<uint64_t> res (n_posns, 0ULL);
-    vector<vector<vector<uint64_t>>> buf_result(nctxts, vector<vector<uint64_t>> (nwords, vector<uint64_t> (slot_count)));
-    
-    MT_EXEC_RANGE(nctxts, first, last);
-    for(int i = first; i < last; i++){
-        for(int k = 0; k < nwords; ++k){
-            if(indicator[i][k]){
-                Plaintext plain_result;
-                decryptor.decrypt(res_ct[i][k], plain_result);
-                batch_encoder.decode(plain_result, buf_result[i][k]);
-            }
-        }
-        
-        // buf_result[i][k]: vector
-        jend = (i == (nctxts - 1)? last_slot_count: slot_count);
-        for(int j = 0; j < jend; ++j){
-            int l = i * slot_count + j;
-            for(int k = 0; k < nwords; ++k){
-                res[l] |= (buf_result[i][k][j] << (nbitsize * k));
-            }
-        }
-    }
-    MT_EXEC_RANGE_END
+    heutils.decrypt_result(res, res_ct, indicator, n_posns, nbitsize, nwords, nctxts, last_slot_count);
        
     time_end = chrono::high_resolution_clock::now();
     time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
     getrusage(RUSAGE_SELF, &usage);
     cout << "Decryption (seconds) : " << time_diff.count()/(1000000.0) << " s] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+}
+
+
+
+// DEL or INS
+void run_secure_variant_annotation_large(vector<vector<uint64_t>> &res, string dataset_str, vector<vector<string>> chr_info, string target)
+{
+    chrono::high_resolution_clock::time_point time_start;
+    chrono::high_resolution_clock::time_point time_end;
     
-    cout << "+----------------------------------------+" << endl;
-    cout << "|              Correctness               |" << endl;
-    cout << "+----------------------------------------+" << endl;
+    long memoryscale = (1 << 20); // 2^20: linux, 2^30: mac
+    struct rusage usage;
     
-    string filename = "data/Annotation_Vector_Data/res_plain_" + to_string(nvariant) + ".txt";
-    vector<uint64_t> plain_res;
-    ifstream openFile(filename.data());
-    if(openFile.is_open()) {
-        read_data(plain_res, filename);
+    // Step 0. Read the data
+    int nchr = chr_info.size(); // number of chromosome
+    //nchr = 2;
+    
+    string variant_folder = dataset_str + "VARIANT_SIGNAL/";      // the folder of annotation vectors
+    string impact_folder = dataset_str + "ANNOTATION_SIGNAL/";     // the folder of annotation signals
+    
+    // vector<vector<int>> variant_vector1 (nchr);
+    res.resize(nchr);
+    int **variant_vector = new int*[nchr];               // variant_vector[nchr][n_posns]
+    uint64_t **impact_vector = new uint64_t*[nchr];     // impact_vector[nchr][n_posns]
+    string *chr_id = new string[nchr];
+    long *n_posns = new long[nchr];
+    
+    for(int ch = 0; ch < nchr; ch++){
+        chr_id[ch] = chr_info[ch][0];// chromosome id
+        n_posns[ch] = (long) atoi(chr_info[ch][1].c_str());  // number of variants
+        if(target == "SNV"){
+            n_posns[ch] *= 4; 
+        }
+        string variant_str = variant_folder + chr_id[ch] + ".bin"; // file for the annotation vector
+        string impact_str = impact_folder + chr_id[ch] + ".bin";   // file for the impact vector
         
-    } else{
-        run_variant_annotation(variant_fp, impact_fp, n_posns, nvariant);
-        read_data(plain_res, filename);
-       
+        const char *variant_fp = variant_str.c_str();
+        const char *impact_fp = impact_str.c_str();
+        
+        // if you want plain computation ...
+        //run_secure_variant_annotation(res[ch], variant_fp, impact_fp, n_posns[ch], 10000);
+        
+        /* Load data (annotation vector, variant loci vector ) */
+        variant_vector[ch] = new int[n_posns[ch]];              // to be encrypted
+        FILE *ptr;
+        ptr = fopen(variant_fp, "rb");
+        fread(variant_vector[ch], sizeof(int), n_posns[ch], ptr);
+
+        impact_vector[ch] = new uint64_t[n_posns[ch]];// not to be encrypted
+        FILE *ptr1;
+        ptr1 = fopen(impact_fp, "rb");
+        fread(impact_vector[ch], sizeof(uint64_t), n_posns[ch], ptr1);
+
+        getrusage(RUSAGE_SELF, &usage);
+        cout << "Load Data " + chr_id[ch] << ".bin (" << n_posns[ch] << "): " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
     }
     
-    int nfail = 0;
-    for(long k = 0; k < n_posns; ++k){
-        if(res[k] !=  plain_res[k])
-        {
-            cout <<  k << ":" << res[k] << " =? " << plain_res[k] << " (" << variant_vector[k] << " * " <<  impact_vector[k] << ")"  << endl;
-            nfail++;
+
+    cout << "+----------------------------------------+" << endl;
+    cout << "|             Key Generation             |" << endl;
+    cout << "+----------------------------------------+" << endl;
+    time_start = chrono::high_resolution_clock::now();
+
+    size_t poly_modulus_degree = (1 << 11);
+    size_t plaintext_modulus_size = 19;
+
+    size_t nwords = 3;
+    size_t nbitsize = 19;   // 2^w-bit repn
+
+    // condition1: nwords * nbitsize < 56
+    // condition2: nbitsize < plaintet_modulus_size
+
+    /*  Key Setup for HE computation  */
+    EncryptionParameters parms(scheme_type::bfv);
+
+    parms.set_poly_modulus_degree(poly_modulus_degree);
+
+    parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+    parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, plaintext_modulus_size));
+
+    SEALContext context(parms);
+
+    auto qualifiers = context.first_context_data()->qualifiers();
+
+    KeyGenerator keygen(context);
+    SecretKey secret_key = keygen.secret_key();
+    PublicKey public_key;
+    keygen.create_public_key(public_key);
+
+    Encryptor encryptor(context, public_key);
+    Evaluator evaluator(context);
+    Decryptor decryptor(context, secret_key);
+
+    auto &context_data = *context.key_context_data();
+
+   /* Print the size of the true (product) coefficient modulus */
+    std::cout << "|   coeff_modulus size: ";
+    std::cout << context_data.total_coeff_modulus_bit_count() << endl;
+    std::cout << "|   plain_modulus size: " << log2(context_data.parms().plain_modulus().value()) << std::endl;
+
+    time_end = chrono::high_resolution_clock::now();
+    auto time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Scheme generation (milliseconds) : " << time_diff.count()/1000.0 << " ms] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+
+    cout << "+----------------------------------------+" << endl;
+    cout << "|     Encryption (annotation vector)     |" << endl;
+    cout << "+----------------------------------------+" << endl;
+
+    time_start = chrono::high_resolution_clock::now();
+
+    BatchEncoder batch_encoder(context);
+    HEutils heutils(encryptor, decryptor, batch_encoder);
+
+    size_t slot_count = batch_encoder.slot_count();
+    int n_threads = Thread::availableThreads(); // omp_get_max_threads();
+    long *nctxts = new long[nchr];
+    vector<vector<Ciphertext>> variant_ct(nchr); // [nchr][nctxts]
+    int jst, jend;
+    long *last_slot_count = new long[nchr];
+    long total_nctxts = 0;
+    
+    for(int ch = 0; ch < nchr; ch++){
+        nctxts[ch] = (ceil)((n_posns[ch]/(double)slot_count));
+        cout << chr_id[ch] << ".id (" << nctxts[ch] << ") ... " ;
+        last_slot_count[ch] = (n_posns[ch] - slot_count * (nctxts[ch] - 1));
+        heutils.encrypt_data(variant_ct[ch], variant_vector[ch], nctxts[ch], last_slot_count[ch], n_threads);
+        total_nctxts += nctxts[ch];
+    }
+    cout  << "encryption done" << endl;
+    
+    time_end = chrono::high_resolution_clock::now();
+    time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Encryption "  << nchr << " chrs/"<< total_nctxts << " cts (seconds) : " << time_diff.count()/(1000000.0) << " s] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+
+    cout << "+----------------------------------------+" << endl;
+    cout << "|          Encode (variant loci)         |" << endl;
+    cout << "+----------------------------------------+" << endl;
+    
+    time_start = chrono::high_resolution_clock::now();
+
+    vector<vector<vector<Plaintext>>> impact_pt(nchr); // [nchr][nctxts][nwords]
+    vector<vector<vector<bool>>> indicator(nchr);       // [nchr][nctxts][nwords]
+    
+    for(int ch = 0; ch < nchr; ch++){
+        cout << chr_id[ch] << ".id ... " ;
+        heutils.encode_variants(impact_pt[ch], indicator[ch],
+                              impact_vector[ch], nbitsize, nwords, nctxts[ch], last_slot_count[ch]);
+    }
+    cout << "encode done " << endl;
+
+    time_end = chrono::high_resolution_clock::now();
+    time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Encode (seconds) : " << time_diff.count()/(1000000.0) << " s] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+
+
+    cout << "+----------------------------------------+" << endl;
+    cout << "|               Evaluation               |" << endl;
+    cout << "+----------------------------------------+" << endl;
+
+    time_start = chrono::high_resolution_clock::now();
+
+    vector<vector<vector<Ciphertext>>> res_ct (nchr); //[nchr][ctxts][nwords]
+
+    for(int ch = 0; ch < nchr; ch++){
+        res_ct[ch].resize(nctxts[ch]);
+
+        MT_EXEC_RANGE(nctxts[ch], first, last);
+        for(int i = first; i < last; i++){
+            res_ct[ch][i].resize(nwords);
+            for(int k = 0; k < nwords; ++k){
+                if(indicator[ch][i][k]){
+                    evaluator.multiply_plain(variant_ct[ch][i], impact_pt[ch][i][k], res_ct[ch][i][k]);
+                }
+            }
         }
+        MT_EXEC_RANGE_END
     }
 
-    if(nfail != 0){
-        cout << "> " << nfail << " fails" << endl;
-    } else{
-        cout << "> All Passed" << endl;
+
+    time_end = chrono::high_resolution_clock::now();
+    time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Evaluation (seconds) : " << time_diff.count()/(1000000.0) << " s] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
+    cout << "Noise budget in result: " << decryptor.invariant_noise_budget(res_ct[0][0][0]) << " bits" << endl;
+
+    cout << "+----------------------------------------+" << endl;
+    cout << "|              Decryption                |" << endl;
+    cout << "+----------------------------------------+" << endl;
+
+    time_start = chrono::high_resolution_clock::now();
+
+    res.resize(nchr); // [nchr][n_posns]
+
+    for(int ch = 0; ch < nchr; ch++){
+        heutils.decrypt_result(res[ch], res_ct[ch], indicator[ch], n_posns[ch], nbitsize, nwords, nctxts[ch], last_slot_count[ch]);
     }
+
+    time_end = chrono::high_resolution_clock::now();
+    time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    getrusage(RUSAGE_SELF, &usage);
+    cout << "Decryption (seconds) : " << time_diff.count()/(1000000.0) << " s] w/ " << (double) usage.ru_maxrss/(memoryscale)  << "(GB)" << endl;
 }
 
 /*
@@ -787,12 +878,12 @@ void run_secure_variant_reencrypt_aggregation(int n_posns, int encoding, int n_a
     }
     else{ // read the whole genotypes and precompute their summation, and store them
         vector<vector<int>> prec_geno_res_0;
-        string filename0 = "data/Aggregation_Matrix_Data/task2_res_plain_" + to_string(encoding) + "_" + to_string(n_individuals_0) + ".txt";
+        string filename0 = "data/Aggregation_Matrix_Data/task2_res_plain_"  + to_string(n_individuals_0) + "_" + to_string(encoding) + "_" + to_string(n_alleles);
         read_data(prec_geno_res_0, filename0, n_alleles);
         cout << prec_geno_res_0[0].size() << endl;
 
         vector<vector<int>> prec_geno_res_1;
-        filename0 = "data/Aggregation_Matrix_Data/task2_res_plain_" + to_string(encoding) + "_" + to_string(n_individuals_1) + ".txt";
+        filename0 = "data/Aggregation_Matrix_Data/task2_res_plain_"  + to_string(encoding) + "_" + to_string(n_individuals_1) + ".txt";
         read_data(prec_geno_res_1, filename0, n_alleles);
 
         for(int i = 0; i < prec_geno_res_0.size(); ++i){

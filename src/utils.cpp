@@ -2,7 +2,8 @@
  * @file       utils.cpp, cpp file
  * @brief      function for reading and storing data
  *
- * @copyright  MIT License
+ * @author     Miran Kim, Arif Harmanci
+ * @copyright  GNU Pub License
  */
 
 
@@ -279,11 +280,11 @@ void read_data(vector<vector<int>>& res, string filename)
 {
     char split_char = 0x09; // "\t";
     ifstream openFile(filename.data());
-    
+
     vector<vector<string>> res_str;
     if(openFile.is_open()) {
         string line;
-        
+    
         /*  read each line */
         while(getline(openFile, line)){
             vector<string> vecsline;
@@ -306,6 +307,28 @@ void read_data(vector<vector<int>>& res, string filename)
     }
 }
 
+
+void read_data(vector<vector<string>>& res, string filename)
+{
+    char split_char = 0x09; // "\t";
+    ifstream openFile(filename.data());
+
+    if(openFile.is_open()) {
+        string line;
+        
+        /*  read each line */
+        while(getline(openFile, line)){
+            vector<string> vecsline;
+            istringstream split(line);
+            vector<string> tokens;
+            for (string each; getline(split, each, split_char); tokens.push_back(each));
+            
+            res.push_back(tokens);
+        }
+    } else {
+        throw invalid_argument("Error: cannot read file");
+    }
+}
 
 /*
  @param[in] filename, path of an input file
